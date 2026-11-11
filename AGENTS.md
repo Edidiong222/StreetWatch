@@ -54,6 +54,8 @@ Use a modular monolith architecture.
 
 Keep the frontend and backend logically separated.
 
+and please for every change you make create/update the progress.md to allow other agents to know your progress
+
 Suggested structure:
 
 ```text
