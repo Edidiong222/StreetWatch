@@ -8,10 +8,14 @@
     "start": "nest start",
     "build": "nest build",
     "start:prod": "node dist/main",
-    "typeorm": "npm run typeorm",
-    "migration:generate": "npm run typeorm -- migration:generate -d src/database/data-source.ts",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch --runInBand",
+    "test:cov": "jest --coverage --runInBand",
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:generate": "npm run typeorm -- migration:generate -d src/database/data-source.ts src/database/migrations/Migration",
     "migration:run": "npm run typeorm -- migration:run -d src/database/data-source.ts",
-    "migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts"
+    "migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts",
+    "seed:super-admin": "ts-node src/database/seeds/create-super-admin.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -20,10 +24,12 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/throttler": "^6.4.0",
     "@nestjs/typeorm": "^11.0.0",
     "argon2": "^0.41.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "dotenv": "^16.4.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.13.0",
@@ -34,10 +40,17 @@
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
-    "@types/express": "^5.0.0",
+    "@nestjs/testing": "^10.0.0",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
     "@types/passport-jwt": "^4.0.0",
     "@types/pg": "^8.11.0",
     "@types/node": "^20.0.0",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.0"
   }
 }
