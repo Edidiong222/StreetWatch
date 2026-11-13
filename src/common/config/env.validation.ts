@@ -71,6 +71,22 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CORS_ORIGIN = 'http://localhost:3000';
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_CLOUD_NAME?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_API_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_FOLDER = 'streetwatch/reports';
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
