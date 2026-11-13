@@ -22,6 +22,7 @@ import { VerificationModule } from './verification/verification.module';
         name: 'default',
         ttl: 60000,
         limit: 100,
+        skipIf: () => process.env.NODE_ENV === 'test',
       },
     ]),
     DatabaseModule,

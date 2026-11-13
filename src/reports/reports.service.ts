@@ -39,6 +39,12 @@ const ALLOWED_STATUS_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
 
 const EDITABLE_STATUSES = [ReportStatus.PENDING_REVIEW, ReportStatus.REJECTED];
 
+const SORT_COLUMNS = {
+  createdAt: 'report.createdAt',
+  updatedAt: 'report.updatedAt',
+  verificationCount: 'report.verificationCount',
+} as const;
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -272,8 +278,7 @@ export class ReportsService {
     }
 
     builder
-      .orderBy(`report.${query.sortBy}`, query.sortOrder)
-      .addOrderBy('images.createdAt', 'ASC')
+      .orderBy(SORT_COLUMNS[query.sortBy], query.sortOrder)
       .skip((query.page - 1) * query.limit)
       .take(query.limit);
 
@@ -297,7 +302,7 @@ export class ReportsService {
       .leftJoinAndSelect('report.creator', 'creator')
       .leftJoinAndSelect('report.images', 'images')
       .where('report.id = :id', { id })
-      .addOrderBy('images.createdAt', 'ASC');
+      .addOrderBy('images.created_at', 'ASC');
 
     const report = await builder.getOne();
 
