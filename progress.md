@@ -4,7 +4,16 @@ Last updated: 2026-11-12
 
 ## Current Phase
 
-Phase 1: Backend foundation and authentication. Complete pending approval before Phase 2.
+Phase 2: Reports and community verification. In progress (backend only). Phase 1 is complete.
+
+### Phase 2 progress
+
+- Added `ReportStatus` enum and public status list.
+- Added `Category`, `Report`, `ReportImage` and `ReportVerification` entities with relationships, indexes and constraints.
+- Added category management (public listing plus admin create/update).
+- Added report creation, approved/public listing, single report access, own reports listing, owner updates, admin status transitions, filtering, search, sorting and pagination.
+- Added Cloudinary-backed report image uploads with file type, count and size validation.
+- Pending: verification module, migration, e2e tests, final verification.
 
 ## Completed
 
