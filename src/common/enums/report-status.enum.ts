@@ -1,0 +1,13 @@
+export enum ReportStatus {
+  PENDING_REVIEW = 'PENDING_REVIEW',
+  APPROVED = 'APPROVED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  REJECTED = 'REJECTED',
+}
+
+export const PUBLIC_REPORT_STATUSES = [
+  ReportStatus.APPROVED,
+  ReportStatus.IN_PROGRESS,
+  ReportStatus.RESOLVED,
+];
