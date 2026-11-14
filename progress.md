@@ -8,7 +8,7 @@ Phase 3: Administration, comments and notifications. Complete pending user appro
 
 ### Phase 3 completed
 
-- Added `ReportStatusHistory` records for every official administrator status change, including previous status, new status, administrator, optional note and timestamp.
+- Added `ReportStatusHistory` records for every official administrator status change, including previous status, new status, administrator, optional note and timestamp. Rejections require a reason.
 - Status changes, history records and status notifications are saved in one database transaction with a pessimistic report lock. Invalid transitions write nothing.
 - Added administrator endpoints:
   - All reports with report filters and pagination.

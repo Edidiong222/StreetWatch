@@ -288,6 +288,12 @@ describe('Administration, comments and notifications (e2e)', () => {
         .send({})
         .expect(400);
 
+      await request(app.getHttpServer())
+        .patch(`/api/reports/${report.id as string}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: ReportStatus.REJECTED })
+        .expect(400);
+
       const rejected = await request(app.getHttpServer())
         .patch(`/api/admin/reports/${report.id as string}/reject`)
         .set('Authorization', `Bearer ${adminToken}`)

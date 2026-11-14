@@ -71,7 +71,7 @@ Existing category administration remains available at:
 | `RESOLVED` | None |
 | `REJECTED` | None |
 
-Repeated status changes are no-ops. Invalid transitions return `400`.
+Repeated status changes are no-ops. Invalid transitions return `400`. Rejecting a report through any endpoint requires a reason.
 
 ### Approve example
 

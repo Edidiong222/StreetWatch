@@ -259,6 +259,10 @@ export class ReportsService {
   ): Promise<ReportResponseDto> {
     const note = dto.note?.trim() ? dto.note.trim() : null;
 
+    if (dto.status === ReportStatus.REJECTED && !note) {
+      throw new BadRequestException('A reason is required when rejecting a report');
+    }
+
     await this.dataSource.transaction(async (manager) => {
       const reports = manager.getRepository(Report);
       const report = await reports
