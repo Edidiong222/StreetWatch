@@ -11,6 +11,7 @@ import { NotificationType } from '../src/common/enums/notification-type.enum';
 import { ReportStatus } from '../src/common/enums/report-status.enum';
 import { UserRole } from '../src/common/enums/user-role.enum';
 import { Notification } from '../src/notifications/entities/notification.entity';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { ReportStatusHistory } from '../src/reports/entities/report-status-history.entity';
 import { Report } from '../src/reports/entities/report.entity';
 import { User } from '../src/users/entities/user.entity';
@@ -245,6 +246,33 @@ describe('Administration, comments and notifications (e2e)', () => {
         .send({})
         .expect(400);
 
+      expect(await historyRepository.count()).toBe(0);
+      expect(await notificationsRepository.count()).toBe(0);
+    });
+
+    it('rolls back status and history when the notification write fails', async () => {
+      const { token } = await registerCitizen();
+      const report = await createReport(token);
+      const adminToken = await createAdminToken();
+      const notificationsService = app.get(NotificationsService);
+      const createNotification = jest
+        .spyOn(notificationsService, 'create')
+        .mockRejectedValueOnce(new Error('Notification store unavailable'));
+
+      try {
+        await request(app.getHttpServer())
+          .patch(`/api/admin/reports/${report.id as string}/approve`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({})
+          .expect(500);
+      } finally {
+        createNotification.mockRestore();
+      }
+
+      const stored = await reportsRepository.findOneOrFail({
+        where: { id: report.id as string },
+      });
+      expect(stored.status).toBe(ReportStatus.PENDING_REVIEW);
       expect(await historyRepository.count()).toBe(0);
       expect(await notificationsRepository.count()).toBe(0);
     });

@@ -34,7 +34,7 @@ Phase 3: Administration, comments and notifications. Complete pending user appro
   - Reports grouped by status and category.
   - Ten most recent submissions.
 - Added migration `1794000002000-CreateCommentsNotificationsAndStatusHistory`.
-- Added 13 e2e tests for administration permissions, status transitions, history, comments, moderation, notifications and statistics.
+- Added 14 e2e tests for administration permissions, status transitions, history, rollback atomicity, comments, moderation, notifications and statistics.
 
 ### Phase 2 completed
 
@@ -177,10 +177,10 @@ Test result:
 
 ```text
 Test Suites: 4 passed, 4 total
-Tests:       37 passed, 37 total
+Tests:       38 passed, 38 total
 ```
 
-Coverage includes registration, duplicate email prevention, role-injection rejection, login success/failure, profile authentication, ADMIN/SUPER_ADMIN authorization, database uniqueness, DTO validation, report creation, retrieval visibility, report ownership, update permissions, invalid categories, admin status transitions, duplicate verification, self-verification prevention, verification removal and accurate counts, filtering, search, pagination, category management, image upload validation, administration permissions, invalid status transitions, status history, atomic status updates, comment permissions, comment moderation, notification creation, notification read state and dashboard statistics.
+Coverage includes registration, duplicate email prevention, role-injection rejection, login success/failure, profile authentication, ADMIN/SUPER_ADMIN authorization, database uniqueness, DTO validation, report creation, retrieval visibility, report ownership, update permissions, invalid categories, admin status transitions, duplicate verification, self-verification prevention, verification removal and accurate counts, filtering, search, pagination, category management, image upload validation, administration permissions, invalid status transitions, status history, atomic status updates and rollback, comment permissions, comment moderation, notification creation, notification read state and dashboard statistics.
 
 Also verified manually:
 
