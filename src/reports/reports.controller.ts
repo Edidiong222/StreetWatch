@@ -23,6 +23,7 @@ import {
   PaginatedReportsResponseDto,
   ReportResponseDto,
 } from './dto/report-response.dto';
+import { ReportStatusHistoryResponseDto } from './dto/report-status-history-response.dto';
 import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportsService } from './reports.service';
@@ -66,6 +67,15 @@ export class ReportsController {
     return this.reportsService.findPublicOrOwnOne(id, user);
   }
 
+  @Get(':id/history')
+  @UseGuards(OptionalJwtAuthGuard)
+  getHistory(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user?: User | null,
+  ): Promise<ReportStatusHistoryResponseDto[]> {
+    return this.reportsService.getStatusHistory(id, user);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   update(
@@ -82,7 +92,8 @@ export class ReportsController {
   updateStatus(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateReportStatusDto,
+    @CurrentUser() user: User,
   ): Promise<ReportResponseDto> {
-    return this.reportsService.updateStatus(id, dto);
+    return this.reportsService.updateStatus(id, dto, user);
   }
 }

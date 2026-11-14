@@ -1,10 +1,40 @@
 # StreetWatch Progress
 
-Last updated: 2026-11-13
+Last updated: 2026-11-14
 
 ## Current Phase
 
-Phase 2: Reports and community verification. Complete pending user approval. Phase 3 and the frontend have not started.
+Phase 3: Administration, comments and notifications. Complete pending user approval. The frontend has not started.
+
+### Phase 3 completed
+
+- Added `ReportStatusHistory` records for every official administrator status change, including previous status, new status, administrator, optional note and timestamp.
+- Status changes, history records and status notifications are saved in one database transaction with a pessimistic report lock. Invalid transitions write nothing.
+- Added administrator endpoints:
+  - All reports with report filters and pagination.
+  - Pending reports.
+  - Approve, reject-with-reason, move to in-progress and resolve actions.
+  - Report status history access.
+  - Database-backed statistics.
+  - Existing admin category endpoints remain at `/api/categories/all`, `POST /api/categories` and `PATCH /api/categories/:id`.
+- Added persistent comments:
+  - Citizens can comment on approved, in-progress or resolved reports.
+  - Public comment listing excludes hidden comments.
+  - Authors can edit or delete their own comments.
+  - Hidden comments cannot be edited.
+  - Administrators can hide or restore comments with an optional moderation reason.
+  - Report creators receive a notification when someone else comments.
+- Added persistent notifications:
+  - Notifications are stored in PostgreSQL with type, title, message, optional report, read flag and read timestamp.
+  - Created for approval, rejection, in-progress, resolution and new comments.
+  - Endpoints for listing, unread counts, marking one as read and marking all as read.
+  - Users can only access their own notifications.
+- Added database-backed dashboard statistics:
+  - Total, pending, approved, in-progress, resolved and rejected counts.
+  - Reports grouped by status and category.
+  - Ten most recent submissions.
+- Added migration `1794000002000-CreateCommentsNotificationsAndStatusHistory`.
+- Added 13 e2e tests for administration permissions, status transitions, history, comments, moderation, notifications and statistics.
 
 ### Phase 2 completed
 
@@ -85,6 +115,12 @@ Phase 2: Reports and community verification. Complete pending user approval. Pha
 - Verification endpoints are restricted to the `CITIZEN` role. Administrators can moderate reports but do not add community verification.
 - Uploaded image binaries are never stored in PostgreSQL. Only Cloudinary URLs and public IDs are stored.
 - Report coordinates are optional but must be provided as a pair and are range-checked in validation, the service and the database.
+- Only administrator status changes are recorded as official status history. Owner edits that resubmit a rejected report are not administrator actions.
+- Report status changes, their history records and their notifications are committed atomically. Invalid transitions roll back without writing anything.
+- Comments are allowed after a report passes review: `APPROVED`, `IN_PROGRESS` and `RESOLVED`. Pending and rejected reports remain closed to comments.
+- Comment moderation hides content instead of deleting it, preserving the moderation trail. Hidden comments are invisible to the public but available to administrators.
+- Notifications are persistent database records, not real-time events. SSE is intentionally deferred.
+- Dashboard statistics are computed from aggregate SQL queries on every request; no counters are hardcoded.
 
 ## Endpoints
 
@@ -102,12 +138,30 @@ Phase 2: Reports and community verification. Complete pending user approval. Pha
 | GET | `/api/reports` | Public |
 | GET | `/api/reports/mine` | Authenticated |
 | GET | `/api/reports/:id` | Public, owner or admin |
+| GET | `/api/reports/:id/history` | Public, owner or admin |
 | PATCH | `/api/reports/:id` | Owner |
 | PATCH | `/api/reports/:id/status` | ADMIN, SUPER_ADMIN |
 | POST | `/api/reports/:id/images` | Owner |
+| GET | `/api/reports/:reportId/comments` | Public, owner or admin |
+| POST | `/api/reports/:reportId/comments` | CITIZEN |
+| PATCH | `/api/comments/:id` | Comment author |
+| DELETE | `/api/comments/:id` | Comment author |
+| PATCH | `/api/comments/:id/moderate` | ADMIN, SUPER_ADMIN |
 | GET | `/api/reports/:reportId/verifications` | Public |
 | POST | `/api/reports/:reportId/verifications` | CITIZEN |
 | DELETE | `/api/reports/:reportId/verifications/me` | CITIZEN |
+| GET | `/api/notifications` | Authenticated |
+| GET | `/api/notifications/unread-count` | Authenticated |
+| PATCH | `/api/notifications/:id/read` | Authenticated |
+| PATCH | `/api/notifications/read-all` | Authenticated |
+| GET | `/api/admin/reports` | ADMIN, SUPER_ADMIN |
+| GET | `/api/admin/reports/pending` | ADMIN, SUPER_ADMIN |
+| GET | `/api/admin/reports/:id/history` | ADMIN, SUPER_ADMIN |
+| GET | `/api/admin/statistics` | ADMIN, SUPER_ADMIN |
+| PATCH | `/api/admin/reports/:id/approve` | ADMIN, SUPER_ADMIN |
+| PATCH | `/api/admin/reports/:id/reject` | ADMIN, SUPER_ADMIN |
+| PATCH | `/api/admin/reports/:id/in-progress` | ADMIN, SUPER_ADMIN |
+| PATCH | `/api/admin/reports/:id/resolve` | ADMIN, SUPER_ADMIN |
 
 ## Verification
 
@@ -122,16 +176,16 @@ npm --prefix backend test
 Test result:
 
 ```text
-Test Suites: 3 passed, 3 total
-Tests:       24 passed, 24 total
+Test Suites: 4 passed, 4 total
+Tests:       37 passed, 37 total
 ```
 
-Coverage includes registration, duplicate email prevention, role-injection rejection, login success/failure, profile authentication, ADMIN/SUPER_ADMIN authorization, database uniqueness, DTO validation, report creation, retrieval visibility, report ownership, update permissions, invalid categories, admin status transitions, duplicate verification, self-verification prevention, verification removal and accurate counts, filtering, search, pagination, category management and image upload validation.
+Coverage includes registration, duplicate email prevention, role-injection rejection, login success/failure, profile authentication, ADMIN/SUPER_ADMIN authorization, database uniqueness, DTO validation, report creation, retrieval visibility, report ownership, update permissions, invalid categories, admin status transitions, duplicate verification, self-verification prevention, verification removal and accurate counts, filtering, search, pagination, category management, image upload validation, administration permissions, invalid status transitions, status history, atomic status updates, comment permissions, comment moderation, notification creation, notification read state and dashboard statistics.
 
 Also verified manually:
 
-- `npm --prefix backend run migration:run` against a fresh database.
-- The Phase 2 e2e suite drops the test schema, runs both migrations from scratch and passes.
+- `npm --prefix backend run migration:run` applies both Phase 2 and Phase 3 migrations.
+- The e2e suites drop the test schema, run all migrations from scratch and pass.
 - `npm --prefix backend run seed:super-admin` creates a `SUPER_ADMIN` user.
 - A live Cloudinary upload was not executed because no Cloudinary credentials were available. Validation and the unconfigured-service failure path are covered by tests.
 
@@ -173,8 +227,9 @@ On this Windows machine, PostgreSQL child backends occasionally failed with `0xC
 - Rate limiting is configured but has no dedicated automated test yet.
 - There is no token revocation or refresh-token flow.
 - Live Cloudinary uploads require real credentials; only validation and failure handling are tested.
-- Report status changes are not yet written to a `ReportStatusHistory` audit table. This is expected to be added with the administration phase.
-- Comments, notifications, administration statistics and the frontend have not started.
+- Notifications are not pushed in real time. Clients must poll the notification endpoints. SSE is intentionally deferred.
+- Notification retention and cleanup policies are not implemented.
+- The frontend, super-admin account management and platform settings have not started.
 
 ## Main Files Created or Modified
 
@@ -211,6 +266,7 @@ On this Windows machine, PostgreSQL child backends occasionally failed with `0xC
 - `src/users/users.module.ts`
 - `src/users/users.service.ts`
 - `src/common/enums/report-status.enum.ts`
+- `src/common/enums/notification-type.enum.ts`
 - `src/common/guards/optional-jwt-auth.guard.ts`
 - `src/categories/entities/category.entity.ts`
 - `src/categories/dto/create-category.dto.ts`
@@ -221,11 +277,13 @@ On this Windows machine, PostgreSQL child backends occasionally failed with `0xC
 - `src/categories/categories.module.ts`
 - `src/reports/entities/report.entity.ts`
 - `src/reports/entities/report-image.entity.ts`
+- `src/reports/entities/report-status-history.entity.ts`
 - `src/reports/dto/create-report.dto.ts`
 - `src/reports/dto/update-report.dto.ts`
 - `src/reports/dto/update-report-status.dto.ts`
 - `src/reports/dto/query-reports.dto.ts`
 - `src/reports/dto/report-response.dto.ts`
+- `src/reports/dto/report-status-history-response.dto.ts`
 - `src/reports/reports.service.ts`
 - `src/reports/reports.controller.ts`
 - `src/reports/reports.module.ts`
@@ -238,13 +296,36 @@ On this Windows machine, PostgreSQL child backends occasionally failed with `0xC
 - `src/verification/verification.service.ts`
 - `src/verification/verification.controller.ts`
 - `src/verification/verification.module.ts`
+- `src/comments/entities/comment.entity.ts`
+- `src/comments/dto/create-comment.dto.ts`
+- `src/comments/dto/update-comment.dto.ts`
+- `src/comments/dto/query-comments.dto.ts`
+- `src/comments/dto/moderate-comment.dto.ts`
+- `src/comments/dto/comment-response.dto.ts`
+- `src/comments/comments.service.ts`
+- `src/comments/comments.controller.ts`
+- `src/comments/comments.module.ts`
+- `src/notifications/entities/notification.entity.ts`
+- `src/notifications/dto/query-notifications.dto.ts`
+- `src/notifications/dto/notification-response.dto.ts`
+- `src/notifications/notifications.service.ts`
+- `src/notifications/notifications.controller.ts`
+- `src/notifications/notifications.module.ts`
+- `src/administration/dto/admin-report-actions.dto.ts`
+- `src/administration/dto/admin-statistics-response.dto.ts`
+- `src/administration/administration.service.ts`
+- `src/administration/administration.controller.ts`
+- `src/administration/administration.module.ts`
 - `src/database/data-source.ts`
 - `src/database/database.module.ts`
 - `src/database/migrations/1794000000000-CreateUsers.ts`
 - `src/database/migrations/1794000001000-CreateReportsAndVerification.ts`
+- `src/database/migrations/1794000002000-CreateCommentsNotificationsAndStatusHistory.ts`
 - `src/database/seeds/create-super-admin.ts`
 - `test/setup-env.ts`
 - `test/global-setup.ts`
 - `test/auth.e2e-spec.ts`
 - `test/reports.e2e-spec.ts`
+- `test/administration.e2e-spec.ts`
 - `docs/phase-2-reports-api.md`
+- `docs/phase-3-admin-comments-notifications.md`

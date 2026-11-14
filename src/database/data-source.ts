@@ -2,7 +2,10 @@ import 'dotenv/config';
 import { join } from 'path';
 import { DataSource } from 'typeorm';
 import { Category } from '../categories/entities/category.entity';
+import { Comment } from '../comments/entities/comment.entity';
+import { Notification } from '../notifications/entities/notification.entity';
 import { ReportImage } from '../reports/entities/report-image.entity';
+import { ReportStatusHistory } from '../reports/entities/report-status-history.entity';
 import { Report } from '../reports/entities/report.entity';
 import { User } from '../users/entities/user.entity';
 import { ReportVerification } from '../verification/entities/report-verification.entity';
@@ -18,7 +21,16 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME ?? 'postgres',
   password: process.env.DB_PASSWORD ?? '',
   database: process.env.DB_NAME ?? 'civicpulse',
-  entities: [User, Category, Report, ReportImage, ReportVerification],
+  entities: [
+    User,
+    Category,
+    Report,
+    ReportImage,
+    ReportVerification,
+    ReportStatusHistory,
+    Comment,
+    Notification,
+  ],
   migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
   synchronize: false,
   logging: parseBoolean(process.env.DB_LOGGING),

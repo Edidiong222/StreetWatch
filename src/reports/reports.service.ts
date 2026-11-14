@@ -6,13 +6,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
+import { Brackets, DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { CategoriesService } from '../categories/categories.service';
+import { NotificationType } from '../common/enums/notification-type.enum';
 import {
   PUBLIC_REPORT_STATUSES,
   ReportStatus,
 } from '../common/enums/report-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
+import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/entities/user.entity';
 import { ReportVerification } from '../verification/entities/report-verification.entity';
 import {
@@ -21,8 +23,10 @@ import {
 } from './dto/report-response.dto';
 import { CreateReportDto } from './dto/create-report.dto';
 import { QueryReportsDto } from './dto/query-reports.dto';
+import { ReportStatusHistoryResponseDto } from './dto/report-status-history-response.dto';
 import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
+import { ReportStatusHistory } from './entities/report-status-history.entity';
 import { Report } from './entities/report.entity';
 
 const ALLOWED_STATUS_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
@@ -52,7 +56,11 @@ export class ReportsService {
     private readonly reportsRepository: Repository<Report>,
     @InjectRepository(ReportVerification)
     private readonly verificationsRepository: Repository<ReportVerification>,
+    @InjectRepository(ReportStatusHistory)
+    private readonly statusHistoryRepository: Repository<ReportStatusHistory>,
     private readonly categoriesService: CategoriesService,
+    private readonly notificationsService: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(dto: CreateReportDto, creator: User): Promise<ReportResponseDto> {
@@ -127,10 +135,42 @@ export class ReportsService {
     return this.paginate(builder, query);
   }
 
+  findForAdmin(query: QueryReportsDto): Promise<PaginatedReportsResponseDto> {
+    const builder = this.createBaseQuery();
+
+    if (query.status) {
+      builder.andWhere('report.status = :status', { status: query.status });
+    }
+
+    return this.paginate(builder, query);
+  }
+
+  findPending(query: QueryReportsDto): Promise<PaginatedReportsResponseDto> {
+    return this.paginate(
+      this.createBaseQuery().andWhere('report.status = :status', {
+        status: ReportStatus.PENDING_REVIEW,
+      }),
+      query,
+    );
+  }
+
   async findPublicOrOwnOne(
     id: string,
     viewer?: User | null,
   ): Promise<ReportResponseDto> {
+    const report = await this.findViewableReport(id, viewer);
+
+    const hasVerified =
+      viewer && report.status === ReportStatus.APPROVED
+        ? await this.verificationsRepository.exists({
+            where: { reportId: report.id, userId: viewer.id },
+          })
+        : false;
+
+    return this.toResponse(report, hasVerified);
+  }
+
+  async findViewableReport(id: string, viewer?: User | null): Promise<Report> {
     const report = await this.loadReport(id);
 
     const isPublic = PUBLIC_REPORT_STATUSES.includes(report.status);
@@ -142,14 +182,22 @@ export class ReportsService {
       throw new NotFoundException('Report not found');
     }
 
-    const hasVerified =
-      viewer && report.status === ReportStatus.APPROVED
-        ? await this.verificationsRepository.exists({
-            where: { reportId: report.id, userId: viewer.id },
-          })
-        : false;
+    return report;
+  }
 
-    return this.toResponse(report, hasVerified);
+  async getStatusHistory(
+    id: string,
+    viewer?: User | null,
+  ): Promise<ReportStatusHistoryResponseDto[]> {
+    const report = await this.findViewableReport(id, viewer);
+
+    const history = await this.statusHistoryRepository.find({
+      where: { reportId: report.id },
+      relations: { changedBy: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    return history.map(ReportStatusHistoryResponseDto.fromEntity);
   }
 
   async update(
@@ -207,25 +255,69 @@ export class ReportsService {
   async updateStatus(
     id: string,
     dto: UpdateReportStatusDto,
+    administrator: User,
   ): Promise<ReportResponseDto> {
-    const report = await this.loadReport(id);
+    const note = dto.note?.trim() ? dto.note.trim() : null;
 
-    if (report.status === dto.status) {
-      return this.toResponse(report);
-    }
+    await this.dataSource.transaction(async (manager) => {
+      const reports = manager.getRepository(Report);
+      const report = await reports
+        .createQueryBuilder('report')
+        .setLock('pessimistic_write')
+        .where('report.id = :id', { id })
+        .getOne();
 
-    const allowed = ALLOWED_STATUS_TRANSITIONS[report.status];
+      if (!report) {
+        throw new NotFoundException('Report not found');
+      }
 
-    if (!allowed.includes(dto.status)) {
-      throw new BadRequestException(
-        `Cannot change report status from ${report.status} to ${dto.status}`,
+      if (report.status === dto.status) {
+        return;
+      }
+
+      const allowed = ALLOWED_STATUS_TRANSITIONS[report.status];
+
+      if (!allowed.includes(dto.status)) {
+        throw new BadRequestException(
+          `Cannot change report status from ${report.status} to ${dto.status}`,
+        );
+      }
+
+      const previousStatus = report.status;
+      report.status = dto.status;
+      await reports.save(report);
+
+      await manager.getRepository(ReportStatusHistory).save(
+        manager.getRepository(ReportStatusHistory).create({
+          reportId: report.id,
+          previousStatus,
+          newStatus: dto.status,
+          changedById: administrator.id,
+          note,
+        }),
       );
-    }
 
-    report.status = dto.status;
-    await this.reportsRepository.save(report);
+      if (report.creatorId !== administrator.id) {
+        const notification = this.buildStatusNotification(
+          report.title,
+          dto.status,
+          note,
+        );
 
-    return this.toResponse(await this.loadReportOrFail(report.id));
+        await this.notificationsService.create(
+          {
+            userId: report.creatorId,
+            type: notification.type,
+            title: notification.title,
+            message: notification.message,
+            reportId: report.id,
+          },
+          manager,
+        );
+      }
+    });
+
+    return this.toResponse(await this.loadReportOrFail(id));
   }
 
   async ensureOwnerCanModifyReport(id: string, user: User): Promise<Report> {
@@ -319,6 +411,47 @@ export class ReportsService {
 
   private toResponse(report: Report, hasVerified?: boolean): ReportResponseDto {
     return ReportResponseDto.fromEntity(report, hasVerified);
+  }
+
+  private buildStatusNotification(
+    reportTitle: string,
+    status: ReportStatus,
+    note: string | null,
+  ): { type: NotificationType; title: string; message: string } {
+    const reason = note ? ` Reason: ${note.slice(0, 200)}` : '';
+
+    switch (status) {
+      case ReportStatus.APPROVED:
+        return {
+          type: NotificationType.REPORT_APPROVED,
+          title: 'Report approved',
+          message: `Your report "${reportTitle}" has been approved.`,
+        };
+      case ReportStatus.REJECTED:
+        return {
+          type: NotificationType.REPORT_REJECTED,
+          title: 'Report rejected',
+          message: `Your report "${reportTitle}" was rejected.${reason}`,
+        };
+      case ReportStatus.IN_PROGRESS:
+        return {
+          type: NotificationType.REPORT_STATUS_CHANGED,
+          title: 'Report in progress',
+          message: `Your report "${reportTitle}" is now in progress.${reason}`,
+        };
+      case ReportStatus.RESOLVED:
+        return {
+          type: NotificationType.REPORT_RESOLVED,
+          title: 'Report resolved',
+          message: `Your report "${reportTitle}" has been resolved.${reason}`,
+        };
+      default:
+        return {
+          type: NotificationType.REPORT_STATUS_CHANGED,
+          title: 'Report status updated',
+          message: `The status of your report "${reportTitle}" changed to ${status}.${reason}`,
+        };
+    }
   }
 
   private assertCoordinatePair(
