@@ -82,6 +82,7 @@ The backend MVP feature set is implemented through Phase 3. The frontend is scaf
 - Added migration `1794000001000-CreateReportsAndVerification`.
 - Added `docs/phase-2-reports-api.md` with endpoint and Postman instructions.
 - Added 12 e2e tests for reports, verification, upload validation, filtering, pagination and categories.
+- Phase 2 outcome: report submission, discovery, ownership rules, image upload validation and community verification are implemented and covered by e2e tests. Live Cloudinary uploads remain unverified because credentials were unavailable.
 
 ## Phase 1 completed
 
