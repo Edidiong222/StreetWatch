@@ -1,10 +1,23 @@
 # StreetWatch Progress
 
-Last updated: 2026-11-14
+Last updated: 2026-11-15
 
 ## Current Phase
 
-Phase 3: Administration, comments and notifications. Complete pending user approval. The frontend has not started.
+Phase 3: Administration, comments and notifications. Complete pending user approval.
+
+The backend MVP feature set is implemented through Phase 3. The frontend is scaffolded only: it has package metadata and empty module folders, with no UI, design document or API integration yet.
+
+### Project status at a glance
+
+| Area | Status |
+| --- | --- |
+| Backend foundation and authentication | Complete |
+| Reports, categories and community verification | Complete |
+| Administration, comments and notifications | Complete |
+| Frontend application | Not started beyond scaffold |
+| Super-admin account management and platform settings | Not started |
+| Real-time notifications (SSE) | Intentionally deferred |
 
 ### Phase 3 completed
 
