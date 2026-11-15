@@ -181,7 +181,7 @@ The backend MVP feature set is implemented through Phase 3. The frontend is scaf
 
 ## Verification
 
-Completed successfully:
+Completed successfully on 2026-11-15:
 
 ```text
 npm --prefix backend run build
@@ -189,12 +189,15 @@ npx tsc -p backend\tsconfig.json --noEmit
 npm --prefix backend test
 ```
 
-Test result:
+Latest local test result:
 
 ```text
 Test Suites: 4 passed, 4 total
 Tests:       38 passed, 38 total
+Time:        64.495 s
 ```
+
+The build and test suite were re-run on 2026-11-15 against the ephemeral PostgreSQL cluster described below.
 
 Coverage includes registration, duplicate email prevention, role-injection rejection, login success/failure, profile authentication, ADMIN/SUPER_ADMIN authorization, database uniqueness, DTO validation, report creation, retrieval visibility, report ownership, update permissions, invalid categories, admin status transitions, duplicate verification, self-verification prevention, verification removal and accurate counts, filtering, search, pagination, category management, image upload validation, administration permissions, invalid status transitions, status history, atomic status updates and rollback, comment permissions, comment moderation, notification creation, notification read state and dashboard statistics.
 
@@ -245,7 +248,19 @@ On this Windows machine, PostgreSQL child backends occasionally failed with `0xC
 - Live Cloudinary uploads require real credentials; only validation and failure handling are tested.
 - Notifications are not pushed in real time. Clients must poll the notification endpoints. SSE is intentionally deferred.
 - Notification retention and cleanup policies are not implemented.
-- The frontend, super-admin account management and platform settings have not started.
+- The frontend has not been implemented. Only the package manifest and empty module folders exist, and there is no `design/design.md` yet.
+- Super-admin account management and platform-wide settings have not started.
+- Precise report coordinates are stored, but public-facing coordinate privacy still needs an explicit product decision before the frontend is built.
+- The GitHub remote is the backend repository, so `backend/progress.md` is the tracked report. The project-level `progress.md` at the workspace root is a local mirror and is not part of that repository.
+
+## Next Steps
+
+1. Create `design/design.md` covering palette, typography, spacing, components, forms, navigation, status indicators and responsive behaviour.
+2. Scaffold the Next.js App Router frontend with shared layout, authentication screens and API client.
+3. Implement citizen flows: report submission, image upload, report browsing, verification, comments and notifications.
+4. Implement administrator flows: review queue, status actions, moderation and dashboard statistics.
+5. Add super-admin account management and platform settings.
+6. Revisit SSE for live notifications after the polling-based MVP is integrated.
 
 ## Main Files Created or Modified
 
