@@ -48,6 +48,7 @@ The backend MVP feature set is implemented through Phase 3. The frontend is scaf
   - Ten most recent submissions.
 - Added migration `1794000002000-CreateCommentsNotificationsAndStatusHistory`.
 - Added 14 e2e tests for administration permissions, status transitions, history, rollback atomicity, comments, moderation, notifications and statistics.
+- Phase 3 outcome: the full backend MVP workflow is implemented, including review, audited status transitions, citizen discussion, moderation and notifications. The combined backend suite now covers 38 tests.
 
 ### Phase 2 completed
 
