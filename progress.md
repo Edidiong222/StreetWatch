@@ -108,6 +108,7 @@ The backend MVP feature set is implemented through Phase 3. The frontend is scaf
 - Added an initial users migration and an environment-driven SUPER_ADMIN seed script.
 - Added e2e and environment-validation tests.
 - Added `SUPER_ADMIN_*` entries to `.env.example`.
+- Phase 1 outcome: the authentication and role foundation is complete, with password hashing, JWT guards, role enforcement, validation and rate limiting in place.
 
 ## Key Decisions
 
